@@ -17,7 +17,8 @@ public class BetableActivity extends FragmentActivity implements
     BetableLogin loginView;
 
     private final String clientId = "FNTRHDBp7OGwfFVJPo9OBni5p65A0cwo";
-    private final String redirectUri = "https://caseycrites/betable/whack-a-malone";
+    private final String clientSecret = "y75FbTEoLBTopxlchKM2luyzaIIj5Dkf";
+    private final String redirectUri = "https://caseycrites.com/betable/whack-a-malone";
     private String accessToken;
 
     @Override
@@ -39,21 +40,25 @@ public class BetableActivity extends FragmentActivity implements
 
         });
 
-        this.loginView = new BetableLogin(this.clientId, this.redirectUri);
+        this.loginView = new BetableLogin(this.clientId, this.clientSecret,
+                this.redirectUri);
     }
 
     @Override
     public void onSuccessfulLogin(String accessToken) {
-        Toast.makeText(this, "Hooray, we have an access token!",
+        Toast.makeText(this,
+                "Hooray, we have an access token! It's " + accessToken,
                 Toast.LENGTH_LONG).show();
         this.accessToken = accessToken;
         this.loginView.dismiss();
     }
 
     @Override
-    public void onFailedLogin() {
-        Toast.makeText(this, "Bummer, they didn't authorize.",
+    public void onFailedLogin(String reason) {
+        Toast.makeText(this, "Bummer, something went wrong. " + reason,
                 Toast.LENGTH_LONG).show();
-        this.loginView.dismiss();
+        if (this.loginView.isVisible()) {
+            this.loginView.dismiss();
+        }
     }
 }
