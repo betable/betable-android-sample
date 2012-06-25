@@ -13,18 +13,19 @@ import com.betable.fragment.BetableLogin.BetableLoginListener;
 public class BetableActivity extends FragmentActivity implements
         BetableLoginListener {
 
-    Button loginButton;
+    Betable betable;
     BetableLogin loginView;
+    Button loginButton;
 
-    private final String clientId = "FNTRHDBp7OGwfFVJPo9OBni5p65A0cwo";
-    private final String clientSecret = "y75FbTEoLBTopxlchKM2luyzaIIj5Dkf";
-    private final String redirectUri = "https://caseycrites.com/betable/whack-a-malone";
+    private final String clientId = "j4lAcOwsZ8Wdh6DObWxaYzg2sHfppF6t";
+    private final String clientSecret = "C62RUr2nTjAjdlCxowxCAr8VzMqdWSlp";
+    private final String redirectUri = "http://127.0.0.1:8000/callback";
     private String accessToken;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
+        this.setContentView(R.layout.main);
 
         this.loginButton = (Button) this
                 .findViewById(R.id.betable_login_button);
@@ -40,8 +41,23 @@ public class BetableActivity extends FragmentActivity implements
 
         });
 
-        this.loginView = new BetableLogin(this.clientId, this.clientSecret,
-                this.redirectUri);
+        if (savedInstanceState != null) {
+            this.loginView = (BetableLogin) this.getSupportFragmentManager()
+                    .getFragment(savedInstanceState,
+                            BetableLogin.class.getName());
+        } else {
+            this.loginView = BetableLogin.newInstance(this.clientId,
+                    this.clientSecret, this.redirectUri);
+        }
+
+        this.loginView.setListener(this);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle savedInstanceState) {
+        super.onSaveInstanceState(savedInstanceState);
+        this.getSupportFragmentManager().putFragment(savedInstanceState,
+                BetableLogin.class.getName(), this.loginView);
     }
 
     @Override
@@ -50,6 +66,7 @@ public class BetableActivity extends FragmentActivity implements
                 "Hooray, we have an access token! It's " + accessToken,
                 Toast.LENGTH_LONG).show();
         this.accessToken = accessToken;
+        this.betable = new Betable(this.accessToken);
         this.loginView.dismiss();
     }
 
