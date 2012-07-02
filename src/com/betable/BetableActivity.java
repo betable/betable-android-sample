@@ -5,6 +5,7 @@ import android.support.v4.app.FragmentActivity;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import com.betable.fragment.BetableLogin;
@@ -13,13 +14,14 @@ import com.betable.fragment.BetableLogin.BetableLoginListener;
 public class BetableActivity extends FragmentActivity implements
         BetableLoginListener {
 
-    Betable betable;
-    BetableLogin loginView;
-    Button loginButton;
+    static String loginTag = "betable-login";
+    static String visibilityKey = "visibility_key";
 
-    private final String clientId = "j4lAcOwsZ8Wdh6DObWxaYzg2sHfppF6t";
-    private final String clientSecret = "C62RUr2nTjAjdlCxowxCAr8VzMqdWSlp";
-    private final String redirectUri = "http://127.0.0.1:8000/callback";
+    Betable betable;
+    BetableLogin betableLogin;
+    Button loginButton;
+    FrameLayout loginFrame;
+
     private String accessToken;
 
     @Override
@@ -27,37 +29,29 @@ public class BetableActivity extends FragmentActivity implements
         super.onCreate(savedInstanceState);
         this.setContentView(R.layout.main);
 
-        this.loginButton = (Button) this
-                .findViewById(R.id.betable_login_button);
+        this.loginButton = (Button) this.findViewById(R.id.betable_login_button);
+        this.loginFrame = (FrameLayout) this.findViewById(R.id.betable_login_view);
+        if (savedInstanceState != null) {
+            this.loginFrame.setVisibility(savedInstanceState.getInt(visibilityKey));
+        }
 
         this.loginButton.setOnClickListener(new OnClickListener() {
 
             @Override
             public void onClick(View v) {
-                BetableActivity.this.loginView.show(
-                        BetableActivity.this.getSupportFragmentManager(),
-                        "betable-login");
+                BetableActivity.this.betableLogin.show(BetableActivity.this.getSupportFragmentManager(),
+                        R.id.betable_login_view, BetableActivity.this.loginTag);
+                BetableActivity.this.loginFrame.setVisibility(FrameLayout.VISIBLE);
             }
 
         });
 
-        if (savedInstanceState != null) {
-            this.loginView = (BetableLogin) this.getSupportFragmentManager()
-                    .getFragment(savedInstanceState,
-                            BetableLogin.class.getName());
-        } else {
-            this.loginView = BetableLogin.newInstance(this.clientId,
-                    this.clientSecret, this.redirectUri);
+        this.betableLogin = (BetableLogin) this.getSupportFragmentManager().findFragmentByTag(loginTag);
+        if (this.betableLogin == null) {
+            this.betableLogin = BetableLogin.newInstance(BetableApp.getBetableProperty(BetableApp.CLIENT_ID_KEY),
+                    BetableApp.getBetableProperty(BetableApp.CLIENT_SECRET_KEY),
+                    BetableApp.getBetableProperty(BetableApp.REDIRECT_URI_KEY));
         }
-
-        this.loginView.setListener(this);
-    }
-
-    @Override
-    protected void onSaveInstanceState(Bundle savedInstanceState) {
-        super.onSaveInstanceState(savedInstanceState);
-        this.getSupportFragmentManager().putFragment(savedInstanceState,
-                BetableLogin.class.getName(), this.loginView);
     }
 
     @Override
@@ -67,15 +61,19 @@ public class BetableActivity extends FragmentActivity implements
                 Toast.LENGTH_LONG).show();
         this.accessToken = accessToken;
         this.betable = new Betable(this.accessToken);
-        this.loginView.dismiss();
+        if (this.betableLogin.isVisible()) {
+            this.betableLogin.dismiss();
+        }
     }
 
     @Override
     public void onFailedLogin(String reason) {
         Toast.makeText(this, "Bummer, something went wrong. " + reason,
                 Toast.LENGTH_LONG).show();
-        if (this.loginView.isVisible()) {
-            this.loginView.dismiss();
+        if (this.betableLogin.isVisible()) {
+            this.betableLogin.dismiss();
+            this.loginFrame.setVisibility(FrameLayout.INVISIBLE);
         }
     }
+
 }

@@ -8,6 +8,14 @@
         android:layout_centerInParent="true"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/login_with_betable" />
+        android:text="@string/login_with_betable"
+    />
+
+    <FrameLayout
+        android:id="@+id/betable_login_view"
+        android:visibility="invisible"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+    />
 
 </RelativeLayout>

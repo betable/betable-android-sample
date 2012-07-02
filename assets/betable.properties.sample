@@ -1,0 +1,3 @@
+client_id=your application client id
+client_secret=your application client secret
+redirect_uri=your application redirect uri
