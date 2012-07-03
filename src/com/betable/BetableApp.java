@@ -11,6 +11,7 @@ import java.util.Properties;
 public class BetableApp extends Application {
     protected static final String TAG = "BetableApp";
 
+    public static Betable BETABLE;
     public static Properties betableProperties = new Properties();
     public static final String CLIENT_ID_KEY = "client_id",
         CLIENT_SECRET_KEY = "client_secret",

@@ -3,5 +3,9 @@
 
     <string name="app_name">Betable</string>
     <string name="login_with_betable">Login With Betable</string>
+    <string name="bet_string">Bet</string>
+    <string name="wallet_string">Get User Wallet</string>
+    <string name="user_string">Get User</string>
+    <string name="gamble_string">Can I gamble?</string>
 
 </resources>

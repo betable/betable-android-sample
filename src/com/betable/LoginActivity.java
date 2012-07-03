@@ -1,7 +1,9 @@
 package com.betable;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -11,8 +13,9 @@ import android.widget.Toast;
 import com.betable.fragment.BetableLogin;
 import com.betable.fragment.BetableLogin.BetableLoginListener;
 
-public class BetableActivity extends FragmentActivity implements
+public class LoginActivity extends FragmentActivity implements
         BetableLoginListener {
+    protected static final String TAG = "LoginActivity";
 
     static String loginTag = "betable-login";
     static String visibilityKey = "visibility_key";
@@ -39,9 +42,9 @@ public class BetableActivity extends FragmentActivity implements
 
             @Override
             public void onClick(View v) {
-                BetableActivity.this.betableLogin.show(BetableActivity.this.getSupportFragmentManager(),
-                        R.id.betable_login_view, BetableActivity.this.loginTag);
-                BetableActivity.this.loginFrame.setVisibility(FrameLayout.VISIBLE);
+                LoginActivity.this.betableLogin.show(LoginActivity.this.getSupportFragmentManager(),
+                        R.id.betable_login_view, loginTag);
+                LoginActivity.this.loginFrame.setVisibility(FrameLayout.VISIBLE);
             }
 
         });
@@ -59,11 +62,13 @@ public class BetableActivity extends FragmentActivity implements
         Toast.makeText(this,
                 "Hooray, we have an access token! It's " + accessToken,
                 Toast.LENGTH_LONG).show();
-        this.accessToken = accessToken;
-        this.betable = new Betable(this.accessToken);
+        Log.d(TAG, "Access Token: " + accessToken);
         if (this.betableLogin.isVisible()) {
             this.betableLogin.dismiss();
         }
+        Intent intent = new Intent(this, BetActivity.class);
+        intent.putExtra(BetActivity.ACCESS_TOKEN_KEY, accessToken);
+        this.startActivity(intent);
     }
 
     @Override
