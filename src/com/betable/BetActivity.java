@@ -3,7 +3,6 @@ package com.betable;
 import android.content.Context;
 import android.location.Location;
 import android.location.LocationManager;
-import android.nfc.Tag;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -14,6 +13,8 @@ import android.widget.Button;
 import android.widget.Toast;
 import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.IOException;
 import java.util.List;
@@ -24,7 +25,6 @@ public class BetActivity extends FragmentActivity {
     public static final String ACCESS_TOKEN_KEY = "com.betable.ACCESS_TOKEN";
 
     Button canIGambleButton;
-    Button getUserButton;
     Button getUserWalletButton;
     Button betButton;
     HttpResponseHandler httpResponseHandler;
@@ -39,6 +39,7 @@ public class BetActivity extends FragmentActivity {
         BetableApp.BETABLE = new Betable(this.accessToken);
         if (this.getLastCustomNonConfigurationInstance() == null) {
             this.httpResponseHandler = new HttpResponseHandler();
+            BetableApp.BETABLE.getUser(this.httpResponseHandler);
         } else {
             this.httpResponseHandler = (HttpResponseHandler) this.getLastCustomNonConfigurationInstance();
         }
@@ -55,13 +56,6 @@ public class BetActivity extends FragmentActivity {
                 } else {
                     Toast.makeText(BetActivity.this, "Could not get a location.", Toast.LENGTH_LONG).show();
                 }
-            }
-        });
-
-        this.getUserButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                BetableApp.BETABLE.getUser(BetActivity.this.httpResponseHandler);
             }
         });
 
@@ -87,7 +81,6 @@ public class BetActivity extends FragmentActivity {
 
     private void initializeButtons() {
         this.canIGambleButton = (Button) this.findViewById(R.id.can_i_gamble_button);
-        this.getUserButton = (Button) this.findViewById(R.id.get_user_button);
         this.getUserWalletButton = (Button) this.findViewById(R.id.get_user_wallet_button);
         this.betButton = (Button) this.findViewById(R.id.bet_button);
     }
@@ -113,17 +106,31 @@ public class BetActivity extends FragmentActivity {
             int status = message.what;
             HttpResponse response = (HttpResponse) message.obj;
 
-            Toast.makeText(BetActivity.this, "Response status " + String.valueOf(status), Toast.LENGTH_SHORT).show();
+            Log.d(TAG, "Response status " + String.valueOf(status));
 
-            String responseBody = "";
+            JSONObject responseJson = null;
             try {
-                responseBody = EntityUtils.toString(response.getEntity(), "UTF-8");
+                responseJson = new JSONObject(EntityUtils.toString(response.getEntity(), "UTF-8"));
             } catch (IOException e) {
+                Log.e(TAG, e.getMessage());
+            } catch (JSONException e) {
                 Log.e(TAG, e.getMessage());
             }
 
-            Toast.makeText(BetActivity.this, responseBody, Toast.LENGTH_LONG).show();
-            Log.d(TAG, responseBody);
+            if (responseJson == null) {
+                return;
+            } else {
+                Log.d(TAG, responseJson.toString());
+            }
+
+            if (responseJson.has("first_name")) {
+                try  {
+                    BetActivity.this.setTitle(responseJson.getString("first_name") + " " + responseJson.getString("last_name"));
+                } catch (JSONException e) {
+                    Log.e(TAG, e.getMessage());
+                }
+            }
+
         }
     }
 }

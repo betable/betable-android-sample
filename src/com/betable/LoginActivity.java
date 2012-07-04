@@ -3,7 +3,6 @@ package com.betable;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
-import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -20,12 +19,9 @@ public class LoginActivity extends FragmentActivity implements
     static String loginTag = "betable-login";
     static String visibilityKey = "visibility_key";
 
-    Betable betable;
     BetableLogin betableLogin;
     Button loginButton;
     FrameLayout loginFrame;
-
-    private String accessToken;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -59,12 +55,9 @@ public class LoginActivity extends FragmentActivity implements
 
     @Override
     public void onSuccessfulLogin(String accessToken) {
-        Toast.makeText(this,
-                "Hooray, we have an access token! It's " + accessToken,
-                Toast.LENGTH_LONG).show();
-        Log.d(TAG, "Access Token: " + accessToken);
         if (this.betableLogin.isVisible()) {
             this.betableLogin.dismiss();
+            this.loginFrame.setVisibility(FrameLayout.INVISIBLE);
         }
         Intent intent = new Intent(this, BetActivity.class);
         intent.putExtra(BetActivity.ACCESS_TOKEN_KEY, accessToken);
