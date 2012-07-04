@@ -23,11 +23,11 @@ public class BetActivity extends FragmentActivity {
     protected static final String TAG = "BetActivity";
 
     public static final String ACCESS_TOKEN_KEY = "com.betable.ACCESS_TOKEN";
+    public static final String TITLE_KEY = "com.betable.TITLE";
 
     Button canIGambleButton;
     Button getUserWalletButton;
     Button betButton;
-    HttpResponseHandler httpResponseHandler;
     String accessToken;
 
     @Override
@@ -37,11 +37,29 @@ public class BetActivity extends FragmentActivity {
 
         this.accessToken = this.getIntent().getExtras().getString(ACCESS_TOKEN_KEY);
         BetableApp.BETABLE = new Betable(this.accessToken);
-        if (this.getLastCustomNonConfigurationInstance() == null) {
-            this.httpResponseHandler = new HttpResponseHandler();
-            BetableApp.BETABLE.getUser(this.httpResponseHandler);
-        } else {
-            this.httpResponseHandler = (HttpResponseHandler) this.getLastCustomNonConfigurationInstance();
+
+        if (savedInstanceState == null) {
+            BetableApp.BETABLE.getUser(new Handler() {
+                @Override
+                public void handleMessage(Message message) {
+                    HttpResponse response = (HttpResponse) message.obj;
+                    JSONObject responseBody = null;
+                    StringBuilder nameBuilder = new StringBuilder();
+                    try {
+                        responseBody = new JSONObject(EntityUtils.toString(response.getEntity()));
+                        nameBuilder.append(responseBody.getString("first_name")).append(" ").append(
+                            responseBody.getString("last_name"));
+                    } catch (IOException e) {
+                        Log.e(TAG, e.getMessage());
+                    } catch (JSONException e) {
+                        Log.e(TAG, e.getMessage());
+                    }
+
+                    if (responseBody != null) {
+                        BetActivity.this.setTitle(nameBuilder.toString());
+                    }
+                }
+            });
         }
 
         this.initializeButtons();
@@ -51,8 +69,11 @@ public class BetActivity extends FragmentActivity {
             public void onClick(View view) {
                 Location location = BetActivity.this.getLastKnownLocation();
                 if (location != null) {
-                    BetableApp.BETABLE.canIGamble(BetActivity.this.getLastKnownLocation(),
-                            BetActivity.this.httpResponseHandler);
+                    BetableApp.BETABLE.canIGamble(BetActivity.this.getLastKnownLocation(), new Handler() {
+                        @Override
+                        public void handleMessage(Message message) {
+                        }
+                    });
                 } else {
                     Toast.makeText(BetActivity.this, "Could not get a location.", Toast.LENGTH_LONG).show();
                 }
@@ -62,21 +83,51 @@ public class BetActivity extends FragmentActivity {
         this.getUserWalletButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                BetableApp.BETABLE.getUserWallet(BetActivity.this.httpResponseHandler);
+                BetableApp.BETABLE.getUserWallet(new Handler() {
+                    @Override
+                    public void handleMessage(Message message) {
+                        HttpResponse response = (HttpResponse) message.obj;
+
+                        JSONObject responseBody = null;
+                        String monies = "",
+                                currencyType = "";
+                        try {
+                            responseBody = new JSONObject(EntityUtils.toString(response.getEntity()));
+                            monies = responseBody.getJSONObject("sandbox").getString("balance");
+                            currencyType = responseBody.getJSONObject("sandbox").getString("currency");
+                        } catch (IOException e) {
+                            Log.e(TAG, e.getMessage());
+                        } catch (JSONException e) {
+                            Log.e(TAG, e.getMessage());
+                        }
+
+                        if (responseBody != null) {
+                            String currentTitle = BetActivity.this.getTitle().toString();
+                            BetActivity.this.setTitle(currentTitle + " - " + monies + " (" + currencyType + ")");
+                        }
+                    }
+                });
             }
         });
 
         this.betButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                BetableApp.BETABLE.bet(null, BetActivity.this.httpResponseHandler);
+                BetableApp.BETABLE.bet(null, new Handler() {
+
+                });
             }
         });
     }
 
     @Override
-    public Object onRetainCustomNonConfigurationInstance() {
-        return this.httpResponseHandler;
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        savedInstanceState.putString(TITLE_KEY, this.getTitle().toString());
+    }
+
+    @Override
+    public void onRestoreInstanceState(Bundle savedInstanceState) {
+        this.setTitle(savedInstanceState.getString(TITLE_KEY));
     }
 
     private void initializeButtons() {
@@ -98,39 +149,5 @@ public class BetActivity extends FragmentActivity {
             }
         }
         return bestLocation;
-    }
-
-    class HttpResponseHandler extends Handler {
-        @Override
-        public void handleMessage(Message message) {
-            int status = message.what;
-            HttpResponse response = (HttpResponse) message.obj;
-
-            Log.d(TAG, "Response status " + String.valueOf(status));
-
-            JSONObject responseJson = null;
-            try {
-                responseJson = new JSONObject(EntityUtils.toString(response.getEntity(), "UTF-8"));
-            } catch (IOException e) {
-                Log.e(TAG, e.getMessage());
-            } catch (JSONException e) {
-                Log.e(TAG, e.getMessage());
-            }
-
-            if (responseJson == null) {
-                return;
-            } else {
-                Log.d(TAG, responseJson.toString());
-            }
-
-            if (responseJson.has("first_name")) {
-                try  {
-                    BetActivity.this.setTitle(responseJson.getString("first_name") + " " + responseJson.getString("last_name"));
-                } catch (JSONException e) {
-                    Log.e(TAG, e.getMessage());
-                }
-            }
-
-        }
     }
 }
