@@ -15,7 +15,8 @@ public class BetableApp extends Application {
     public static Properties betableProperties = new Properties();
     public static final String CLIENT_ID_KEY = "client_id",
         CLIENT_SECRET_KEY = "client_secret",
-        REDIRECT_URI_KEY = "redirect_uri";
+        REDIRECT_URI_KEY = "redirect_uri",
+        GAME_ID_KEY = "game_id";
 
     @Override
     public void onCreate() {

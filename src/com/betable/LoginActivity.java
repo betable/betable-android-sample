@@ -5,22 +5,19 @@ import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
-
 import com.betable.fragment.BetableLogin;
 import com.betable.fragment.BetableLogin.BetableLoginListener;
 
-public class LoginActivity extends FragmentActivity implements
-        BetableLoginListener {
+@SuppressWarnings("unused")
+public class LoginActivity extends FragmentActivity implements BetableLoginListener {
     protected static final String TAG = "LoginActivity";
 
     static String loginTag = "betable-login";
     static String visibilityKey = "visibility_key";
 
     BetableLogin betableLogin;
-    Button loginButton;
     FrameLayout loginFrame;
 
     @Override
@@ -28,13 +25,12 @@ public class LoginActivity extends FragmentActivity implements
         super.onCreate(savedInstanceState);
         this.setContentView(R.layout.main);
 
-        this.loginButton = (Button) this.findViewById(R.id.betable_login_button);
         this.loginFrame = (FrameLayout) this.findViewById(R.id.betable_login_view);
         if (savedInstanceState != null) {
             this.loginFrame.setVisibility(savedInstanceState.getInt(visibilityKey));
         }
 
-        this.loginButton.setOnClickListener(new OnClickListener() {
+        this.findViewById(R.id.betable_login_button).setOnClickListener(new OnClickListener() {
 
             @Override
             public void onClick(View v) {
