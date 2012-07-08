@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
 import org.json.JSONArray;
@@ -28,21 +29,26 @@ public class BetActivity extends FragmentActivity {
 
     public static final String ACCESS_TOKEN_KEY = "com.betable.ACCESS_TOKEN";
     public static final String TITLE_KEY = "com.betable.TITLE";
+    public static final String BET_AMOUNT_KEY = "com.betable.BET_AMOUNT";
 
     AlertDialog betDialog;
+    BetableRequestHandler requestHandler;
+    String betAmount;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.setContentView(R.layout.bet);
 
+        this.betDialog = this.createBetDialog();
+
         if (savedInstanceState == null) {
             BetableApp.BETABLE = new Betable(this.getIntent().getExtras().getString(ACCESS_TOKEN_KEY));
             BetableApp.BETABLE.setGameId(BetableApp.getBetableProperty(BetableApp.GAME_ID_KEY));
-            this.getUserInfo();
-            this.betDialog = this.createBetDialog();
+            this.requestHandler = new BetableRequestHandler();
+            BetableApp.BETABLE.getUser(this.requestHandler);
         } else {
-            this.betDialog = (AlertDialog) this.getLastCustomNonConfigurationInstance();
+            this.requestHandler = (BetableRequestHandler) this.getLastCustomNonConfigurationInstance();
         }
 
         this.findViewById(R.id.can_i_gamble_button).setOnClickListener(new View.OnClickListener() {
@@ -50,29 +56,7 @@ public class BetActivity extends FragmentActivity {
             public void onClick(View view) {
                 Location location = BetActivity.this.getLastKnownLocation();
                 if (location != null) {
-                    BetableApp.BETABLE.canIGamble(BetActivity.this.getLastKnownLocation(), new Handler() {
-                        @Override
-                        public void handleMessage(Message message) {
-                            HttpResponse response = (HttpResponse) message.obj;
-
-                            JSONObject responseBody;
-                            boolean canIGamble = false;
-                            try {
-                                responseBody = new JSONObject(EntityUtils.toString(response.getEntity()));
-                                canIGamble = responseBody.getBoolean("can_gamble");
-                            } catch (IOException e) {
-                                Log.e(TAG, e.getMessage());
-                            } catch (JSONException e) {
-                                Log.e(TAG, e.getMessage());
-                            }
-
-                            if (canIGamble) {
-                                Toast.makeText(BetActivity.this, "Yes! You can gamble!", Toast.LENGTH_LONG).show();
-                            } else {
-                                Toast.makeText(BetActivity.this, "Sorry, you can't gamble here.", Toast.LENGTH_LONG).show();
-                            }
-                        }
-                    });
+                    BetableApp.BETABLE.canIGamble(BetActivity.this.getLastKnownLocation(),BetActivity.this.requestHandler);
                 } else {
                     Toast.makeText(BetActivity.this, "Could not get a location.", Toast.LENGTH_LONG).show();
                 }
@@ -82,30 +66,7 @@ public class BetActivity extends FragmentActivity {
         this.findViewById(R.id.get_user_wallet_button).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                BetableApp.BETABLE.getUserWallet(new Handler() {
-                    @Override
-                    public void handleMessage(Message message) {
-                        HttpResponse response = (HttpResponse) message.obj;
-
-                        JSONObject responseBody = null;
-                        String monies = "",
-                                currencyType = "";
-                        try {
-                            responseBody = new JSONObject(EntityUtils.toString(response.getEntity()));
-                            monies = responseBody.getJSONObject("sandbox").getString("balance");
-                            currencyType = responseBody.getJSONObject("sandbox").getString("currency");
-                        } catch (IOException e) {
-                            Log.e(TAG, e.getMessage());
-                        } catch (JSONException e) {
-                            Log.e(TAG, e.getMessage());
-                        }
-
-                        if (responseBody != null) {
-                            String currentTitle = BetActivity.this.getTitle().toString();
-                            BetActivity.this.setTitle(currentTitle + " - " + monies + " (" + currencyType + ")");
-                        }
-                    }
-                });
+                BetableApp.BETABLE.getUserWallet(BetActivity.this.requestHandler);
             }
         });
 
@@ -120,22 +81,25 @@ public class BetActivity extends FragmentActivity {
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState) {
         savedInstanceState.putString(TITLE_KEY, this.getTitle().toString());
+        savedInstanceState.putString(BET_AMOUNT_KEY, "");
     }
 
     @Override
     public void onRestoreInstanceState(Bundle savedInstanceState) {
         this.setTitle(savedInstanceState.getString(TITLE_KEY));
+        this.betAmount = savedInstanceState.getString(BET_AMOUNT_KEY);
     }
 
     @Override
     public Object onRetainCustomNonConfigurationInstance() {
-        return this.betDialog;
+        return this.requestHandler;
     }
 
     private AlertDialog createBetDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        if (this.betAmount != null) input.setText(this.betAmount);
         builder.setMessage("How much would you like to bet?")
                 .setView(input)
                 .setCancelable(true)
@@ -143,19 +107,9 @@ public class BetActivity extends FragmentActivity {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         try {
-                            JSONObject betPayload = BetActivity.this.createBetPayload(input.getText().toString().trim());
-                            Log.d(TAG, betPayload.toString());
-                            BetableApp.BETABLE.bet(betPayload, new Handler() {
-                                @Override
-                                public void handleMessage(Message message) {
-                                    HttpResponse response = (HttpResponse) message.obj;
-                                    try {
-                                        Log.d(TAG, EntityUtils.toString(response.getEntity()));
-                                    } catch (IOException e) {
-                                        Log.e(TAG, e.getMessage());
-                                    }
-                                }
-                            });
+                            BetActivity.this.betAmount = input.getText().toString().trim();
+                            JSONObject betPayload = BetActivity.this.createBetPayload(BetActivity.this.betAmount);
+                            BetableApp.BETABLE.bet(betPayload, BetActivity.this.requestHandler);
                         } catch (JSONException e) {
                             Log.e(TAG, e.getMessage());
                         }
@@ -172,36 +126,12 @@ public class BetActivity extends FragmentActivity {
 
     private JSONObject createBetPayload(String betAmount) throws JSONException {
         JSONObject bet = new JSONObject();
-        bet.put("wager", betAmount + ".00");
+        bet.put("wager", betAmount);
         bet.put("currency", "GBP");
         bet.put("paylines", new JSONArray("[[1,1,1],[2,2,2]]"));
         Location location = this.getLastKnownLocation();
         bet.put("location", String.valueOf(location.getLatitude()) +  "," + String.valueOf(location.getLongitude()));
         return bet;
-    }
-
-    private void getUserInfo() {
-        BetableApp.BETABLE.getUser(new Handler() {
-            @Override
-            public void handleMessage(Message message) {
-                HttpResponse response = (HttpResponse) message.obj;
-                JSONObject responseBody = null;
-                StringBuilder nameBuilder = new StringBuilder();
-                try {
-                    responseBody = new JSONObject(EntityUtils.toString(response.getEntity()));
-                    nameBuilder.append(responseBody.getString("first_name")).append(" ").append(
-                            responseBody.getString("last_name"));
-                } catch (IOException e) {
-                    Log.e(TAG, e.getMessage());
-                } catch (JSONException e) {
-                    Log.e(TAG, e.getMessage());
-                }
-
-                if (responseBody != null) {
-                    BetActivity.this.setTitle(nameBuilder.toString());
-                }
-            }
-        });
     }
 
     private Location getLastKnownLocation() {
@@ -217,5 +147,96 @@ public class BetActivity extends FragmentActivity {
             }
         }
         return bestLocation;
+    }
+
+    private void handleUserResponse(JSONObject body) {
+        StringBuilder nameBuilder = new StringBuilder();
+        try {
+            nameBuilder.append(body.getString("first_name")).append(" ").append(
+                    body.getString("last_name"));
+        } catch (JSONException e) {
+            Log.e(TAG, e.getMessage());
+        }
+        this.setTitle(nameBuilder.toString());
+    }
+
+    private void handleGambleResponse(JSONObject body) {
+        boolean canIGamble = false;
+        try {
+            canIGamble = body.getBoolean("can_gamble");
+        } catch (JSONException e) {
+            Log.e(TAG, e.getMessage());
+        }
+
+        if (canIGamble) {
+            Toast.makeText(this, "Yes! You can gamble!", Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, "Sorry, you can't gamble here.", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void handleWalletResponse(JSONObject body) {
+        String monies = "", currencyType = "";
+        try {
+            monies = body.getJSONObject("sandbox").getString("balance");
+            currencyType = body.getJSONObject("sandbox").getString("currency");
+        } catch (JSONException e) {
+            Log.e(TAG, e.getMessage());
+        }
+
+        String currentTitle = this.getTitle().toString();
+        this.setTitle(currentTitle + " - " + monies + " (" + currencyType + ")");
+    }
+
+    private void handleBetResponse(JSONObject body) {
+        String payout = null;
+        try {
+            payout = body.getString("payout");
+        } catch (JSONException e) {
+            Log.e(TAG, e.getMessage());
+        }
+
+        if (payout != null && payout.equals("0.00")) {
+            Toast.makeText(this, "Sorry, you didn't win this time.", Toast.LENGTH_LONG).show();
+        } else if (payout != null) {
+            Toast.makeText(this, "Hooray, you won " + payout + "!", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private JSONObject formatResponse(HttpEntity entity) {
+        JSONObject json = null;
+        try {
+            json = new JSONObject(EntityUtils.toString(entity));
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage());
+        } catch (JSONException e) {
+            Log.e(TAG, e.getMessage());
+        }
+        return json;
+    }
+
+    // request handler
+
+    class BetableRequestHandler extends Handler {
+
+        @Override
+        public void handleMessage(Message message) {
+            JSONObject responseBody = BetActivity.this.formatResponse(((HttpResponse) message.obj).getEntity());
+            switch(message.what) {
+                case Betable.USER_REQUEST:
+                    BetActivity.this.handleUserResponse(responseBody);
+                    break;
+                case Betable.GAMBLE_REQUEST:
+                    BetActivity.this.handleGambleResponse(responseBody);
+                    break;
+                case Betable.WALLET_REQUEST:
+                    BetActivity.this.handleWalletResponse(responseBody);
+                    break;
+                case Betable.BET_REQUEST:
+                    BetActivity.this.handleBetResponse(responseBody);
+                    break;
+            }
+        }
+
     }
 }
