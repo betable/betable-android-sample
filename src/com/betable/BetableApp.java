@@ -40,7 +40,7 @@ public class BetableApp extends Application {
             is = assetManager.open("betable.properties");
             betableProperties.load(is);
         } finally {
-            if (is != null) is.close();;
+            if (is != null) is.close();
         }
     }
 }
